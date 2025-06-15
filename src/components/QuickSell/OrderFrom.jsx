@@ -19,7 +19,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import Cookies from "js-cookie";
+import Cookies from "js-cookies";
 import toast from "react-hot-toast";
 
 const OrderForm = ({

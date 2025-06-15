@@ -123,7 +123,7 @@ const Page = ({ params }) => {
               <h2 className="text-sm font-medium text-gray-500 mb-1">
                 Payment Method
               </h2>
-              <p className="font-medium">{singleInvoice?.method}</p>
+              <p className="font-medium">{singleInvoice?.payment_method}</p>
             </div>
             <div>
               <h2 className="text-sm font-medium text-gray-500 mb-1">Status</h2>
