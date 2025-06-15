@@ -88,10 +88,7 @@ export default function OrderDetailsPage({ params }) {
                 <span className="text-muted-foreground">Date: </span>
                 {formatDate(singleOrder?.created_at)}
               </p>
-              <p>
-                <span className="text-muted-foreground">Shop ID: </span>
-                {singleOrder?.shop}
-              </p>
+              
               <p>
                 <span className="text-muted-foreground">Payment Method: </span>
                 {singleOrder?.method}
