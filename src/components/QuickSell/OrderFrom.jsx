@@ -19,7 +19,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import Cookies from "js-cookies";
+import Cookies from "js-cookie";
 import toast from "react-hot-toast";
 
 const OrderForm = ({
@@ -45,12 +45,12 @@ const OrderForm = ({
       items.length > 0 &&
       transaction.amount_paid >= transaction.grand_total) ||
     (is_POS && phoneSearchTerm && items.length > 0);
-  const POS = ["Cash","COD", "Mobile Banking", "Card", "Due"];
+  const POS = ["Cash", "COD", "Mobile Banking", "Card", "Due"];
   const QuickSale = ["Cash"];
-  
-  // Local state for payment method to ensure initial selection
+
+  // Local state for payment method, initially "none" for normal orders
   const [localPaymentMethod, setLocalPaymentMethod] = useState(
-    transaction.payment_method || (is_POS ? POS[0] : QuickSale[0])
+    transaction.payment_method || (is_POS ? "none" : QuickSale[0])
   );
 
   // Sync local payment method with transaction.payment_method
@@ -58,10 +58,12 @@ const OrderForm = ({
     if (transaction.payment_method) {
       setLocalPaymentMethod(transaction.payment_method);
     } else {
-      // Set default if undefined
-      const defaultMethod = is_POS ? POS[0] : QuickSale[0];
-      setLocalPaymentMethod(defaultMethod);
-      handleTransactionFieldChange("payment_method", defaultMethod);
+      if (is_POS) {
+        setLocalPaymentMethod("none"); // Placeholder for normal orders
+      } else {
+        setLocalPaymentMethod(QuickSale[0]); // "Cash" for quicksell
+        handleTransactionFieldChange("payment_method", QuickSale[0]);
+      }
     }
   }, [transaction.payment_method, is_POS, handleTransactionFieldChange]);
 
@@ -136,16 +138,14 @@ const OrderForm = ({
     handleTransactionFieldChange("grand_total", updatedTransaction.grand_total);
     handleTransactionFieldChange("amount_change", updatedTransaction.amount_change);
     handleTransactionFieldChange("due", updatedTransaction.due);
-    handleTransactionFieldChange("items", updatedTransaction.items);
+    handleTransactionFieldChange("items", updatedItems);
   }, [items, transaction.amount_paid, transaction.discount]);
 
-  // Helper function to safely format numbers
   const formatNumber = (value) => {
     const num = Number(value);
     return isNaN(num) ? "0.00" : num.toFixed(2);
   };
 
-  // Helper function to format date
   const formatDate = (dateString) => {
     if (!dateString) return "Invalid date";
     const date = new Date(dateString);
@@ -159,7 +159,6 @@ const OrderForm = ({
     }).format(date);
   };
 
-  // Helper function to get payment status
   const getPaymentStatus = () => {
     const due = Number(transaction?.due);
     const grandTotal = Number(transaction?.grand_total);
@@ -180,7 +179,6 @@ const OrderForm = ({
       const accessToken = Cookies.get("accessToken");
       if (!accessToken) throw new Error("Authentication required");
 
-      // Fetch invoice data from the API
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}invoice/retrieve/${transaction.shop}/${createdTransactionId}/`,
         {
@@ -190,12 +188,11 @@ const OrderForm = ({
       if (!response.ok) throw new Error("Failed to fetch invoice data");
       const invoiceData = await response.json();
 
-      // Create iframe for printing
       let iframe = document.getElementById("print-iframe");
       if (!iframe) {
         iframe = document.createElement("iframe");
         iframe.id = "print-iframe";
-        iframe.style.display = "none"; // Hide the iframe
+        iframe.style.display = "none";
         document.body.appendChild(iframe);
       }
 
@@ -207,13 +204,13 @@ const OrderForm = ({
             <title>Invoice ${invoiceData.transaction_id}</title>
             <style>
               body {
-                font-family: monospace; /* Better for POS printers */
-                width: 100%; /* Flexible for 58mm or 80mm rolls */
-                max-width: 80mm; /* Upper limit for most POS printers */
-                font-size: 10px; /* Compact for small rolls */
+                font-family: monospace;
+                width: 100%;
+                max-width: 80mm;
+                font-size: 10px;
                 margin: 0;
                 padding: 5px;
-                line-height: 1.2; /* Tight spacing */
+                line-height: 1.2;
               }
               .invoice-header {
                 text-align: center;
@@ -347,12 +344,10 @@ const OrderForm = ({
       `);
       printContent.close();
 
-      // Wait for content to render before printing
       setTimeout(() => {
         try {
           iframe.contentWindow.print();
           setIsPrintLoading(false);
-          // Clean up by removing the iframe after a short delay
           setTimeout(() => {
             if (document.body.contains(iframe)) {
               document.body.removeChild(iframe);
@@ -505,10 +500,10 @@ const OrderForm = ({
       <div className="grid grid-cols-2 gap-4 items-center text-sm">
         <span className="text-base font-semibold">Payment Method</span>
         <Select
-          value={localPaymentMethod}
+          value={localPaymentMethod || "none"}
           onValueChange={(value) => {
             setLocalPaymentMethod(value);
-            handleTransactionFieldChange("payment_method", value);
+            handleTransactionFieldChange("payment_method", value === "none" ? "" : value);
           }}
         >
           <SelectTrigger id="payment_method">
@@ -517,6 +512,7 @@ const OrderForm = ({
           <SelectContent>
             {is_POS ? (
               <>
+                <SelectItem value="none">Select payment method</SelectItem>
                 {POS.map((method) =>
                   method ? (
                     <SelectItem key={method} value={method}>
@@ -544,16 +540,47 @@ const OrderForm = ({
           <Button
             className="w-full cursor-pointer bg-[var(--color-background-teal)] hover:bg-[var(--color-background-teal)] dark:bg-blue-500 text-white"
             disabled={isLoading}
-            onClick={() =>
-              createOrder(transaction, (result) => {
+            onClick={() => {
+              let methodToSend;
+              if (is_POS) {
+                if (localPaymentMethod === "none") {
+                  if (transaction.due == 0) {
+                    methodToSend = "Cash";
+                    setLocalPaymentMethod("Cash");
+                    handleTransactionFieldChange("payment_method", "Cash");
+                  } else {
+                    methodToSend = "Due";
+                    setLocalPaymentMethod("Due");
+                    handleTransactionFieldChange("payment_method", "Due");
+                  }
+                } else {
+                  if (transaction.due == 0 && localPaymentMethod === "Due") {
+                    toast.error("Cannot select 'Due' when full payment is made.");
+                    return;
+                  } else if (transaction.due > 0 && localPaymentMethod !== "Due") {
+                    toast.error("When there is a due amount, please select 'Due'.");
+                    return;
+                  } else {
+                    methodToSend = localPaymentMethod;
+                  }
+                }
+              } else {
+                methodToSend = "Cash";
+              }
+              const finalTransaction = {
+                ...transaction,
+                method: methodToSend,
+              };
+              createOrder(finalTransaction, (result) => {
                 if (result && result.transaction_id) {
                   setCreatedTransactionId(result.transaction_id);
                   setShowSuccessModal(true);
                 } else {
                   console.error("No transaction_id returned from createOrder");
+                  toast.error("Order created, but no transaction ID returned");
                 }
-              })
-            }
+              });
+            }}
           >
             {isLoading ? "Submitting..." : "Submit Order"}
           </Button>

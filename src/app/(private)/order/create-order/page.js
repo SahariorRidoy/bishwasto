@@ -20,9 +20,6 @@ import Cookies from "js-cookie";
 const CreateOrder = () => {
   const [phoneSearchTerm, setPhoneSearchTerm] = useState("");
   const selectedShop = useSelector((state) => state.shop?.selectedShop?.id);
-  const selectShop = useSelector((state) => state.shop?.selectedShop);
-  console.log(selectShop);
-
   const getDefaultTransaction = (selectedShop) => ({
     shop: selectedShop,
     customer_phone_number: "",
@@ -34,7 +31,7 @@ const CreateOrder = () => {
     amount_change: 0.0,
     note: "",
     due: 0.0,
-    method: "COD",
+    method: "",
     items: [],
   });
 
