@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Smartphone, Lock, EyeOff, Eye } from "lucide-react";
+import { Smartphone, Lock, EyeOff, Eye, Loader2 } from "lucide-react";
 import axios from "axios";
 import Cookies from "js-cookie";
 import { useDispatch, useSelector } from "react-redux";
@@ -29,7 +29,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { ForgotPasswordForm } from "@/components/authentication/forgot-password-form";
 
-// Import zod and react-hook-form directly without the resolver
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -49,19 +48,16 @@ const loginSchema = z.object({
 });
 
 export const LoginForm = () => {
-  const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const dispatch = useDispatch();
 
-  // Access auth state from Redux store
   const { isAuthenticated, userInfo } = useSelector((state) => state.auth);
 
   const { handleError } = useApiError();
   const { isLoading: apiLoading, withLoading } = useLoading();
 
-  // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
       if (userInfo?.is_shopOwner) {
@@ -92,39 +88,34 @@ export const LoginForm = () => {
       if (response.status === 200) {
         const { access, refresh } = response.data.tokens;
 
-        // Store tokens in cookies
         Cookies.set("accessToken", access, {
-          expires: 1, // 1 day
+          expires: 1,
           secure: true,
           sameSite: "Strict",
           path: "/",
         });
 
         Cookies.set("refreshToken", refresh, {
-          expires: 7, // 7 days
+          expires: 7,
           secure: true,
           sameSite: "Strict",
           path: "/",
         });
 
-        // Extract user data from response
         const userData = {
           is_shopOwner: response.data.is_shopOwner,
           is_employee: response.data.is_employee,
         };
 
-        // Clear any previously selected shop from localStorage
         if (typeof window !== 'undefined') {
           localStorage.removeItem('selectedShop');
         }
 
-        // Update Redux state
         dispatch(setAuthenticated(true));
         dispatch(setUserInfo(userData));
 
         toast.success("Login successful!");
 
-        // Redirect based on user role
         if (userData.is_shopOwner) {
           router.push("/dashboard");
         } else {
@@ -166,7 +157,7 @@ export const LoginForm = () => {
                         placeholder="01XXXXXXXXX"
                         className="pl-10"
                         {...field}
-                        disabled={isLoading}
+                        disabled={apiLoading}
                       />
                     </div>
                   </FormControl>
@@ -201,7 +192,7 @@ export const LoginForm = () => {
                         placeholder="••••••••"
                         className="pl-10"
                         {...field}
-                        disabled={isLoading}
+                        disabled={apiLoading}
                       />
                     </div>
                   </FormControl>
@@ -211,10 +202,10 @@ export const LoginForm = () => {
             />
             <div className="text-right">
               <Button
-                type="button" 
+                type="button"
                 variant="link"
                 className="p-0 h-auto font-normal text-sm mb-1"
-                onClick={() => setShowForgotPassword(true)} 
+                onClick={() => setShowForgotPassword(true)}
               >
                 Forgot password?
               </Button>
@@ -223,10 +214,17 @@ export const LoginForm = () => {
           <CardFooter>
             <Button
               type="submit"
-              className="w-full bg-[#00ADB5] cursor-pointer hover:bg-[#00ADB5]/90 hover:scale-105 dark:bg-blue-600 dark:text-white mt-3"
-              disabled={isLoading}
+              className="w-full bg-[#00ADB5] cursor-pointer hover:bg-[#00ADB5]/90 hover:scale-105 active:scale-95 transition-transform duration-200 dark:bg-blue-600 dark:text-white mt-3"
+              disabled={apiLoading}
             >
-              {isLoading ? "Logging in..." : "Login"}
+              {apiLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Logging in...
+                </>
+              ) : (
+                "Login"
+              )}
             </Button>
           </CardFooter>
         </form>
