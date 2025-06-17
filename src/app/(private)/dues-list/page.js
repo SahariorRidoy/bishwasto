@@ -11,7 +11,7 @@ import Cookies from "js-cookie";
 
 export default function DueListPage() {
   const [asc, setAsc] = useState(false);
-  const [dueList, setDueList] = useState([]);
+  const [consolidatedDueList, setConsolidatedDueList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editingId, setEditingId] = useState(null);
@@ -19,29 +19,41 @@ export default function DueListPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isTablet, setIsTablet] = useState(false);
 
-  // Get selected shop from Redux store
   const selectedShop = useSelector((state) => state.shop.selectedShop);
   const shopId = selectedShop?.id;
 
-  // Fetch due list data
   useEffect(() => {
     const fetchDueList = async () => {
       try {
         setLoading(true);
         const accessToken = Cookies.get("accessToken");
-        
         if (!accessToken) {
           throw new Error("Authentication required");
         }
-        
         const response = await axios.get(
           `${process.env.NEXT_PUBLIC_API_URL}due/list/${shopId}/`,
           {
             headers: { Authorization: `Bearer ${accessToken}` },
           }
         );
-        
-        setDueList(response.data);
+        const dueList = response.data;
+        // Group by customer ID and calculate total due
+        const grouped = dueList.reduce((acc, item) => {
+          const key = item.customer;
+          if (!acc[key]) {
+            acc[key] = {
+              customer_id: key,
+              customer_name: item.customer_name || `Customer #${item.customer}`,
+              customer_phone_number: item.customer_phone_number,
+              total_due: 0,
+              due_items: [],
+            };
+          }
+          acc[key].total_due += parseFloat(item.due_amount);
+          acc[key].due_items.push(item);
+          return acc;
+        }, {});
+        setConsolidatedDueList(Object.values(grouped));
         setLoading(false);
       } catch (err) {
         console.error("Error fetching due list:", err);
@@ -49,7 +61,7 @@ export default function DueListPage() {
         setLoading(false);
       }
     };
-    
+
     if (shopId) {
       fetchDueList();
     } else {
@@ -58,44 +70,37 @@ export default function DueListPage() {
     }
   }, [shopId]);
 
-  // Check if device is tablet (min-width 640px and max-width 1023px)
   useEffect(() => {
     const checkScreenSize = () => {
       setIsTablet(window.innerWidth >= 640 && window.innerWidth < 1024);
     };
-
     checkScreenSize();
     window.addEventListener('resize', checkScreenSize);
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
-  // Filter due list by search term
   const filteredDueList = useMemo(() => {
-    if (!searchTerm) return dueList;
-    
+    if (!searchTerm) return consolidatedDueList;
     const searchLower = searchTerm.toLowerCase();
-    return dueList.filter(item => 
-      (item.customer_name && item.customer_name.toLowerCase().includes(searchLower)) || 
-      (item.customer_phone_number && item.customer_phone_number.toLowerCase().includes(searchLower))
+    return consolidatedDueList.filter(customer =>
+      (customer.customer_name.toLowerCase().includes(searchLower)) ||
+      (customer.customer_phone_number.toLowerCase().includes(searchLower))
     );
-  }, [dueList, searchTerm]);
+  }, [consolidatedDueList, searchTerm]);
 
-  // Sort due list by due amount
   const sortedDueList = useMemo(() => {
     return [...filteredDueList].sort((a, b) => {
-      const da = parseFloat(a.due_amount);
-      const db = parseFloat(b.due_amount);
+      const da = parseFloat(a.total_due);
+      const db = parseFloat(b.total_due);
       return asc ? da - db : db - da;
     });
   }, [asc, filteredDueList]);
 
-  // Start editing a customer's due
-  const handleEdit = (item) => {
-    setEditingId(item.id);
+  const handleEdit = (customer) => {
+    setEditingId(customer.customer_id);
     setPaymentAmount('');
   };
 
-  // Save the updated due amount after payment
   const handleSave = async () => {
     const result = await Swal.fire({
       title: "Are you sure?",
@@ -107,30 +112,41 @@ export default function DueListPage() {
       confirmButtonText: "Yes, save it!",
       cancelButtonText: "Cancel",
     });
-  
+
     if (result.isConfirmed) {
       try {
         const accessToken = Cookies.get("accessToken");
-        const currentItem = dueList.find(item => item.id === editingId);
-        if (currentItem) {
-          const currentDue = parseFloat(currentItem.due_amount);
-          const payment = parseFloat(paymentAmount);
-          if (isNaN(payment) || payment < 0) {
+        const customer = consolidatedDueList.find(c => c.customer_id === editingId);
+        if (customer) {
+          let paymentLeft = parseFloat(paymentAmount);
+          if (isNaN(paymentLeft) || paymentLeft <= 0) {
             throw new Error("Invalid payment amount");
           }
-          const newDue = currentDue - payment;
-          // Update the due amount via API
-          await axios.patch(
-            `${process.env.NEXT_PUBLIC_API_URL}due/retrieve/${shopId}/${editingId}/`,
-            { due_amount: newDue.toString() },
-            { headers: { Authorization: `Bearer ${accessToken}` } }
-          );
+          const updatedDueItems = customer.due_items.map(item => {
+            if (paymentLeft <= 0) return item;
+            const dueAmount = parseFloat(item.due_amount);
+            const paymentToApply = Math.min(dueAmount, paymentLeft);
+            const newDueAmount = dueAmount - paymentToApply;
+            paymentLeft -= paymentToApply;
+            return { ...item, due_amount: newDueAmount.toString() };
+          });
+          // Update each modified due item via API
+          for (const item of updatedDueItems) {
+            const originalItem = customer.due_items.find(i => i.id === item.id);
+            if (item.due_amount !== originalItem.due_amount) {
+              await axios.patch(
+                `${process.env.NEXT_PUBLIC_API_URL}due/retrieve/${shopId}/${item.id}/`,
+                { due_amount: item.due_amount },
+                { headers: { Authorization: `Bearer ${accessToken}` } }
+              );
+            }
+          }
           // Update local state
-          setDueList(prevList => 
-            prevList.map(item => 
-              item.id === editingId 
-                ? { ...item, due_amount: newDue.toString() } 
-                : item
+          setConsolidatedDueList(prevList =>
+            prevList.map(c =>
+              c.customer_id === editingId
+                ? { ...c, total_due: c.total_due - parseFloat(paymentAmount), due_items: updatedDueItems }
+                : c
             )
           );
           Swal.fire({
@@ -149,21 +165,11 @@ export default function DueListPage() {
           icon: "error",
         });
       }
-    } else {
-      Swal.fire({
-        title: "Cancelled",
-        text: "The changes were not saved.",
-        icon: "info",
-        timer: 1200,
-        showConfirmButton: false,
-      });
     }
-    
     setEditingId(null);
     setPaymentAmount('');
   };
 
-  // Cancel editing
   const cancelEdit = () => {
     setEditingId(null);
     setPaymentAmount('');
@@ -188,25 +194,23 @@ export default function DueListPage() {
     );
   }
 
-  // Render mobile card view for each customer
   const renderMobileView = () => {
     return (
       <div className="sm:hidden space-y-3">
         {sortedDueList.length > 0 ? (
-          sortedDueList.map((item) => (
+          sortedDueList.map((customer) => (
             <div
-              key={item.id}
+              key={customer.customer_id}
               className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 border border-gray-200 dark:border-gray-700"
             >
-              {/* Top row - Name and Due Amount */}
               <div className="flex justify-between items-center mb-2">
                 <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate pr-2">
-                  {item.customer_name || `Customer #${item.customer}`}
+                  {customer.customer_name}
                 </h3>
                 <div className="text-sm text-red-600 dark:text-red-300">
-                  {editingId === item.id ? (
+                  {editingId === customer.customer_id ? (
                     <div>
-                      <div>Due: ৳ {item.due_amount}</div>
+                      <div>Due: ৳ {customer.total_due}</div>
                       <div className="flex items-center mt-1">
                         <span className="mr-1">Payment: ৳</span>
                         <input
@@ -219,19 +223,17 @@ export default function DueListPage() {
                       </div>
                     </div>
                   ) : (
-                    <>৳ {item.due_amount}</>
+                    <>৳ {customer.total_due}</>
                   )}
                 </div>
               </div>
-              
-              {/* Bottom row - Phone, Send Message, Edit */}
               <div className="flex justify-between items-center text-sm">
                 <div className="text-gray-500 dark:text-gray-400 truncate pr-2">
-                  {item.customer_phone_number}
+                  {customer.customer_phone_number}
                 </div>
                 <div className="flex items-center space-x-2 shrink-0">
-                  <SendReminderButton customer={item} />
-                  {editingId === item.id ? (
+                  <SendReminderButton customer={{ ...customer, due_amount: customer.total_due }} />
+                  {editingId === customer.customer_id ? (
                     <div className="flex space-x-1">
                       <button
                         onClick={handleSave}
@@ -250,7 +252,7 @@ export default function DueListPage() {
                     </div>
                   ) : (
                     <button
-                      onClick={() => handleEdit(item)}
+                      onClick={() => handleEdit(customer)}
                       className="p-1 text-blue-600 hover:text-blue-800 dark:text-blue-500 dark:hover:text-blue-300"
                       title="Edit Due"
                     >
@@ -268,8 +270,8 @@ export default function DueListPage() {
             </div>
             <h3 className="text-lg font-medium mb-1">No dues found</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {searchTerm 
-                ? "Try changing your search query or check for typos" 
+              {searchTerm
+                ? "Try changing your search query or check for typos"
                 : "There are no outstanding dues recorded"}
             </p>
           </div>
@@ -280,7 +282,6 @@ export default function DueListPage() {
 
   return (
     <div className="w-full mx-auto p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 max-w-full overflow-x-auto">
-      {/* Page Header with Search */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-[#00ADB5] dark:text-blue-500">
@@ -290,7 +291,6 @@ export default function DueListPage() {
             List of customers with pending payments
           </p>
         </div>
-        
         <div className="relative w-full sm:w-64 lg:w-72">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-4 w-4 text-gray-400" />
@@ -305,10 +305,8 @@ export default function DueListPage() {
         </div>
       </div>
 
-      {/* Mobile View */}
       {renderMobileView()}
 
-      {/* Tablet & Desktop Table View */}
       <div className="hidden sm:block overflow-hidden bg-white dark:bg-gray-800 rounded-xl shadow-lg">
         <div className="overflow-x-auto w-full">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -346,11 +344,6 @@ export default function DueListPage() {
                 <th className="w-1/6 px-4 py-3 text-center text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 uppercase">
                   Send Message
                 </th>
-                {editingId && (
-                  <th className="w-1/6 px-4 py-3 text-left text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Payment
-                  </th>
-                )}
                 <th className="w-1/6 px-4 py-3 text-right text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 uppercase">
                   Update
                 </th>
@@ -358,34 +351,29 @@ export default function DueListPage() {
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {sortedDueList.length > 0 ? (
-                sortedDueList.map((item, idx) => (
+                sortedDueList.map((customer) => (
                   <tr
-                    key={item.id}
+                    key={customer.customer_id}
                     className={classNames(
                       'hover:bg-gray-50 dark:hover:bg-gray-700/50',
-                      idx % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700'
+                      customer.customer_id % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700'
                     )}
                   >
                     <td className="px-4 py-3 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {item.customer_name || `Customer #${item.customer}`}
+                      {customer.customer_name}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                      {item.customer_phone_number}
+                      {customer.customer_phone_number}
                     </td>
                     <td className={classNames(
                       "px-4 py-3 whitespace-nowrap text-xs sm:text-sm font-semibold text-red-600 dark:text-red-300",
-                      editingId === item.id && parseFloat(item.due_amount) > 0 ? 'bg-yellow-100 dark:bg-yellow-900' : ''
+                      editingId === customer.customer_id ? 'bg-yellow-100 dark:bg-yellow-900' : ''
                     )}>
-                      ৳ {item.due_amount}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-center text-xs sm:text-sm">
-                      <SendReminderButton customer={item} />
-                    </td>
-                    {editingId && (
-                      <td className="px-4 py-3 whitespace-nowrap text-xs sm:text-sm">
-                        {editingId === item.id ? (
-                          <div className="flex items-center">
-                            <span className="mr-1 sm:mr-2">৳</span>
+                      {editingId === customer.customer_id ? (
+                        <div>
+                          <div>Due: ৳ {customer.total_due}</div>
+                          <div className="flex items-center mt-1">
+                            <span className="mr-1">Payment: ৳</span>
                             <input
                               type="text"
                               value={paymentAmount}
@@ -394,11 +382,16 @@ export default function DueListPage() {
                               autoFocus
                             />
                           </div>
-                        ) : null}
-                      </td>
-                    )}
+                        </div>
+                      ) : (
+                        <>৳ {customer.total_due}</>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-center text-xs sm:text-sm">
+                      <SendReminderButton customer={{ ...customer, due_amount: customer.total_due }} />
+                    </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right text-xs sm:text-sm">
-                      {editingId === item.id ? (
+                      {editingId === customer.customer_id ? (
                         <div className="flex justify-end items-center space-x-1 sm:space-x-2">
                           <button
                             onClick={handleSave}
@@ -417,11 +410,11 @@ export default function DueListPage() {
                         </div>
                       ) : (
                         <button
-                          onClick={() => handleEdit(item)}
+                          onClick={() => handleEdit(customer)}
                           className="p-1 text-blue-600 hover:text-blue-800 dark:text-blue-500 dark:hover:text-blue-300"
                           title="Edit Due"
                         >
-                          <Edit2 className="h-4 cursor-pointer w-4 sm:h-5 sm:w-5" />
+                          <Edit2 className="h-4 w-4 sm:h-5 sm:w-5" />
                         </button>
                       )}
                     </td>
@@ -429,7 +422,7 @@ export default function DueListPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={editingId ? 6 : 5} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
                     No dues found matching your search.
                   </td>
                 </tr>
@@ -437,7 +430,6 @@ export default function DueListPage() {
             </tbody>
           </table>
         </div>
-        
         {sortedDueList.length > 0 && (
           <div className="bg-white dark:bg-gray-800 px-4 py-3 sm:px-6 sm:py-4 border-t border-gray-200 dark:border-gray-700">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
