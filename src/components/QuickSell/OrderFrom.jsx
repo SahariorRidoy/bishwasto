@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import Cookies from "js-cookie";
 import toast from "react-hot-toast";
+import { isValidPhoneNumber, parsePhoneNumber } from "libphonenumber-js";
 
 const OrderForm = ({
   is_POS,
@@ -39,12 +40,14 @@ const OrderForm = ({
   const [createdTransactionId, setCreatedTransactionId] = useState(null);
   const [open, setOpen] = useState(false);
   const [isPrintLoading, setIsPrintLoading] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
   const selectShop = useSelector((state) => state.shop?.selectedShop);
   const shouldShowButton =
     (!is_POS &&
       items.length > 0 &&
       transaction.amount_paid >= transaction.grand_total) ||
-    (is_POS && phoneSearchTerm && items.length > 0);
+    (is_POS && phoneSearchTerm && items.length > 0 && !phoneError);
+
   const POS = ["Cash", "COD", "Mobile Banking", "Card", "Due"];
   const QuickSale = ["Cash"];
 
@@ -59,9 +62,9 @@ const OrderForm = ({
       setLocalPaymentMethod(transaction.payment_method);
     } else {
       if (is_POS) {
-        setLocalPaymentMethod("none"); // Placeholder for normal orders
+        setLocalPaymentMethod("none");
       } else {
-        setLocalPaymentMethod(QuickSale[0]); // "Cash" for quicksell
+        setLocalPaymentMethod(QuickSale[0]);
         handleTransactionFieldChange("payment_method", QuickSale[0]);
       }
     }
@@ -79,6 +82,27 @@ const OrderForm = ({
       customer.phone_number?.toLowerCase().includes(query)
     );
   }, [customers, phoneSearchTerm]);
+
+  // Phone number validation
+  const validatePhoneNumber = (phone) => {
+    if (!phone) {
+      setPhoneError(is_POS ? "Phone number is required" : "");
+      return false;
+    }
+    try {
+      const phoneNumber = parsePhoneNumber(phone, "BD"); // Default to BD for parsing context
+      if (isValidPhoneNumber(phone, phoneNumber.country || "BD")) {
+        setPhoneError("");
+        return true;
+      } else {
+        setPhoneError("Invalid phone number format");
+        return false;
+      }
+    } catch (error) {
+      setPhoneError("Invalid phone number format");
+      return false;
+    }
+  };
 
   useEffect(() => {
     const newSubtotal = items.reduce(
@@ -390,22 +414,31 @@ const OrderForm = ({
           </span>
           <div className="relative w-full">
             <Input
-              className="border px-3 mt-5 py-2 bg-transparent focus:ring-0"
-              placeholder="Enter number..."
+              className={`border px-3 mt-5 py-2 bg-transparent focus:ring-0 ${
+                phoneError ? "border-red-500" : ""
+              }`}
+              placeholder="Enter number"
               value={phoneSearchTerm}
               onChange={(e) => {
-                setPhoneSearchTerm(e.target.value || "");
+                const value = e.target.value || "";
+                setPhoneSearchTerm(value);
+                validatePhoneNumber(value);
                 setOpen(true);
               }}
               onBlur={() => {
                 if (!filteredCustomers.some((c) => c.phone_number === phoneSearchTerm)) {
-                  handleTransactionFieldChange(
-                    "customer_phone_number",
-                    phoneSearchTerm
-                  );
+                  if (validatePhoneNumber(phoneSearchTerm)) {
+                    handleTransactionFieldChange(
+                      "customer_phone_number",
+                      phoneSearchTerm
+                    );
+                  }
                 }
               }}
             />
+            {phoneError && (
+              <p className="text-red-500 text-xs mt-1">{phoneError}</p>
+            )}
             {phoneSearchTerm && open && filteredCustomers.length > 0 && (
               <div className="absolute top-14 z-10 w-full rounded mt-2 max-h-40 overflow-y-auto dark:bg-gray-700 bg-gray-300">
                 {filteredCustomers.map((customer) => (
@@ -414,6 +447,7 @@ const OrderForm = ({
                     className="p-2 dark:hover:bg-gray-300/30 hover:bg-gray-200 cursor-pointer"
                     onClick={() => {
                       handleSelectCustomer(customer);
+                      setPhoneError("");
                       setOpen(false);
                     }}
                   >
@@ -539,8 +573,12 @@ const OrderForm = ({
         {shouldShowButton && (
           <Button
             className="w-full cursor-pointer bg-[var(--color-background-teal)] hover:bg-[var(--color-background-teal)] dark:bg-blue-500 text-white"
-            disabled={isLoading}
+            disabled={isLoading || phoneError}
             onClick={() => {
+              if (is_POS && !validatePhoneNumber(phoneSearchTerm)) {
+                toast.error("Please enter a valid phone number.");
+                return;
+              }
               let methodToSend;
               if (is_POS) {
                 if (localPaymentMethod === "none") {
