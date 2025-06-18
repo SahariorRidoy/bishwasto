@@ -85,7 +85,6 @@ const CreateOrder = () => {
           callback(result);
         }
       } else {
-        console.error("No transaction_id in response:", result);
         toast.error("Order created, but no transaction ID returned");
       }
     } catch (error) {
@@ -194,15 +193,7 @@ const CreateOrder = () => {
 
   return (
     <div className="w-full h-full flex flex-col gap-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Quick Sell</h1>
-          <p className="text-muted-foreground mt-1">
-            Sell products quickly and easily.
-          </p>
-        </div>
-      </div>
-
+      
       <div className="w-full flex-1 flex gap-4 flex-col lg:flex-row">
         <Card className="backdrop-blur-sm border lg:w-2/3">
           <CardHeader>

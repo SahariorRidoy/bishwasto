@@ -197,16 +197,8 @@ const CreateOrder = () => {
 
   return (
     <div className="w-full h-full">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Create Sales</h1>
-          <p className="text-muted-foreground mt-1">
-            Sell your products to customers and manage orders efficiently.
-          </p>
-        </div>
-      </div>
-
-      <div className="w-full flex-1 flex gap-4 justify-between flex-col py-6 lg:flex-row relative rounded-lg">
+      
+      <div className="w-full flex-1 flex gap-4 justify-between flex-col pb-6 lg:flex-row relative rounded-lg">
         <Card className="backdrop-blur-sm border lg:w-2/3">
           <CardHeader>
             <div className="flex items-center gap-3 justify-between">
