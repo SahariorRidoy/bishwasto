@@ -1,43 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { useSelector } from "react-redux";
 import axios from "axios";
 import Cookies from "js-cookie";
 
-const CustomTooltip = ({ active, payload, isDark }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-md">
-        <p className="font-medium text-sm">{payload[0].name}</p>
-        <p className="font-medium text-sm" style={{ color: payload[0].color }}>
-          {`Orders: ${payload[0].value}`}
-        </p>
-      </div>
-    );
-  }
-  return null;
-};
-
-const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
-  const RADIAN = Math.PI / 180;
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-  const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-  return (
-    <text x={x} y={y} fill="white" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central">
-      {`${(percent * 100).toFixed(0)}%`}
-    </text>
-  );
-};
-
 export default function OrderStatus() {
-  const [orderData, setOrderData] = useState([
-    { name: "Completed", value: 0 },
-    { name: "Pending", value: 0 },
-  ]);
+  const [orderData, setOrderData] = useState({ completed: 0, pending: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(true);
@@ -70,26 +39,19 @@ export default function OrderStatus() {
           return;
         }
 
-        // Fetch all orders for the shop
         const response = await axios.get(
           `${process.env.NEXT_PUBLIC_API_URL}order/list/${shopId}/`,
           { headers: { Authorization: `Bearer ${accessToken}` } }
         );
 
-        console.log("API Response:", response.data); // Debug API response
-
         const orders = Array.isArray(response.data) ? response.data : [];
         const completedCount = orders.filter(order => parseFloat(order.due) === 0).length;
         const pendingCount = orders.length - completedCount;
 
-        console.log("Order Counts:", { completedCount, pendingCount }); // Debug counts
-
-        const chartData = [
-          { name: "Completed", value: completedCount },
-          { name: "Pending", value: pendingCount },
-        ];
-
-        setOrderData(chartData);
+        setOrderData({
+          completed: completedCount,
+          pending: pendingCount,
+        });
         setError(null);
       } catch (err) {
         console.error("Error fetching order data:", err);
@@ -109,71 +71,61 @@ export default function OrderStatus() {
     fetchData();
   }, [shopId, isAuthenticated]);
 
-  const COLORS = isDark
-    ? ["#3B82F6", "#71717a"]
-    : ["#00ADB5", "#71717a"];
-
+  // Render authentication or shop selection prompts
   if (!isAuthenticated) {
     return (
-      <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 rounded-lg">
-        Please log in to view order status.
+      <div className="p-6 bg-gradient-to-r from-yellow-100 to-yellow-200 dark:from-yellow-900/30 dark:to-yellow-800/30 text-yellow-900 dark:text-yellow-200 rounded-xl shadow-lg">
+        <p className="text-sm font-medium">Please log in to view order status.</p>
       </div>
     );
   }
 
   if (!shopId && !loading) {
     return (
-      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 rounded-lg">
-        Please select a shop to view order status.
+      <div className="p-6 bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 text-blue-900 dark:text-blue-200 rounded-xl shadow-lg">
+        <p className="text-sm font-medium">Please select a shop to view order status.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-md hover:shadow-lg transition-shadow">
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold">Order Status</h3>
+    <div className={`p-6 rounded-2xl shadow-xl transition-all duration-300 ${isDark ? "bg-gray-900/80 backdrop-blur-sm" : "bg-white"}`}>
+      <div className="flex justify-between items-center mb-6">
+        <h3 className={`text-2xl font-bold ${isDark ? "text-white" : "text-[#00ADB5]"}`}>Order Status</h3>
       </div>
 
       {loading ? (
-        <div className="p-4 text-center text-gray-600 dark:text-gray-400">
-          <svg className="animate-spin h-5 w-5 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          Loading...
+        <div className="p-6 text-center">
+          <div className="animate-pulse flex space-x-4">
+            <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
+            <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
+          </div>
         </div>
       ) : error ? (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 rounded-lg">{error}</div>
-      ) : orderData[0].value === 0 && orderData[1].value === 0 ? (
-        <div className="p-4 text-center text-gray-600 dark:text-gray-400">No orders available.</div>
+        <div className="p-6 bg-gradient-to-r from-red-100 to-red-200 dark:from-red-900/30 dark:to-red-800/30 text-red-900 dark:text-red-200 rounded-xl">
+          <p className="text-sm font-medium">{error}</p>
+        </div>
+      ) : orderData.completed === 0 && orderData.pending === 0 ? (
+        <div className="p-6 text-center text-gray-500 dark:text-gray-400">
+          <p className="text-sm font-medium">No orders available.</p>
+        </div>
       ) : (
-        <ResponsiveContainer width="100%" height={300}>
-          <PieChart>
-            <Pie
-              data={orderData}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              outerRadius={100}
-              labelLine={false}
-              label={renderCustomizedLabel}
-              fill="#8884d8"
-            >
-              {orderData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-              ))}
-            </Pie>
-            <Tooltip content={(props) => <CustomTooltip {...props} isDark={isDark} />} />
-            <Legend
-              layout="horizontal"
-              verticalAlign="bottom"
-              align="center"
-              formatter={(value) => <span className="text-sm font-medium">{value}</span>}
-            />
-          </PieChart>
-        </ResponsiveContainer>
+        <div className="p-6 bg-[#00ADB5] to-teal-50 dark:from-blue-900/20 dark:to-teal-900/20 rounded-xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="p-6 rounded-lg bg-white dark:bg-gray-800 shadow-md transition-transform hover:scale-105 flex-1">
+              <p className={`text-lg font-medium ${isDark ? "text-gray-400" : "text-gray-600"}`}>Completed Orders</p>
+              <p className={`text-3xl font-bold ${isDark ? "text-blue-400" : "text-blue-500"}`}>
+                {orderData.completed.toLocaleString()}
+              </p>
+            </div>
+            <div className="p-6 rounded-lg bg-white dark:bg-gray-800 shadow-md transition-transform hover:scale-105 flex-1">
+              <p className={`text-lg font-medium ${isDark ? "text-gray-400" : "text-gray-600"}`}>Pending Orders</p>
+              <p className={`text-3xl font-bold ${isDark ? "text-yellow-400" : "text-yellow-500"}`}>
+                {orderData.pending.toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

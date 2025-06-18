@@ -192,11 +192,11 @@ export default function StatsCards() {
       {statsData.map((stat, index) => (
         <div
           key={index}
-          className={`bg-gradient-to-br ${stat.lightGradient} dark:${stat.darkGradient} text-white p-4 md:p-5 rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 ease-in-out`}
+          className={`bg-gradient-to-br ${stat.lightGradient} dark:${stat.darkGradient} text-white p-4 md:p-10 rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 ease-in-out`}
         >
           <div className="flex justify-between items-start">
             <div className="flex flex-col space-y-1">
-              <p className={`text-[0.7rem] md:text-xs font-semibold uppercase tracking-wide ${stat.lightText} dark:${stat.darkText}`}>
+              <p className={`text-[0.7rem] md:text-sm font-semibold uppercase tracking-wide ${stat.lightText} dark:${stat.darkText}`}>
                 {stat.title}
               </p>
               <h2 className="text-xl md:text-2xl font-bold">{stat.value}</h2>
