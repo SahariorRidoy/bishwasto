@@ -100,13 +100,10 @@ export default function StatsCards() {
 
     const stats = calculateStats();
     
-    // For demonstration, we're showing some change percentages
-    // In a real application, you'd calculate these based on historical data
     return [
       {
         title: "Total Revenue",
         value: formatCurrency(salesData.revenue || 0),
-        change: "+15% this month",
         lightGradient: "bg-[#00ADB5]",
         darkGradient: "bg-blue-500",
         lightText: "text-teal-100",
@@ -116,7 +113,6 @@ export default function StatsCards() {
       {
         title: "Total Orders",
         value: stats.orders.toString(),
-        change: "+12% from yesterday",
         lightGradient: "bg-[#00ADB5]",
         darkGradient: "bg-blue-500",
         lightText: "text-teal-100",
@@ -126,7 +122,6 @@ export default function StatsCards() {
       {
         title: "Total Profit",
         value: formatCurrency(salesData.profit || 0),
-        change: "+20% this month",
         lightGradient: "bg-[#00ADB5]",
         darkGradient: "bg-blue-500",
         lightText: "text-teal-100",
@@ -136,7 +131,6 @@ export default function StatsCards() {
       {
         title: "Total Dues",
         value: formatCurrency(salesData.total_dues || 0),
-        change: "+5% this month",
         lightGradient: "bg-[#00ADB5]",
         darkGradient: "bg-blue-500",
         lightText: "text-teal-100",
@@ -206,9 +200,7 @@ export default function StatsCards() {
                 {stat.title}
               </p>
               <h2 className="text-xl md:text-2xl font-bold">{stat.value}</h2>
-              <p className={`text-[0.65rem] md:text-xs mt-1 ${stat.lightText} dark:${stat.darkText}`}>
-                {stat.change}
-              </p>
+              
             </div>
             <div>{stat.icon}</div>
           </div>
