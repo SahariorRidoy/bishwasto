@@ -37,18 +37,16 @@ const ProductTable = ({ items, handlePriceChange, handleQtyChange, handleRemoveI
                   <Input
                     id={`price_${item.id}`}
                     name={`price_${item.id}`}
-                    type="text"
-                    inputMode="decimal"
-                    pattern="[0-9]+(\.[0-9]{1,2})?"
-                    value={item.price}
+                    type="number"
+                    step="0.01"
+                    
+                    value={item.price === 0 ? "" : item.price}
                     onChange={(e) => {
                       const value = e.target.value;
-                      if (e.target.validity.valid || value === "") {
-                        handlePriceChange(item.id, value === "" ? 0 : Number(value));
-                      }
+                      handlePriceChange(item.id, value === "" ? 0 : Number(value));
                     }}
                     required
-                    className="w-full text-right text-sm lg:text-base h-10"
+                    className="w-full text-right text-sm lg:text-base h-10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </TableCell>
                 <TableCell>
@@ -74,6 +72,7 @@ const ProductTable = ({ items, handlePriceChange, handleQtyChange, handleRemoveI
                         handleQtyChange(item.id, Math.max(1, Number(item.qty) - 1));
                       }
                     }}
+                    onFocus={(e) => e.target.select()}
                     required
                     className="w-full text-right text-sm lg:text-base h-10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
@@ -111,15 +110,12 @@ const ProductTable = ({ items, handlePriceChange, handleQtyChange, handleRemoveI
                 <Input
                   id={`price_${item.id}`}
                   name={`price_${item.id}`}
-                  type="text"
-                  inputMode="decimal"
-                  pattern="[0-9]+(\.[0-9]{1,2})?"
-                  value={item.price}
+                  type="number"
+                  step="0.01"
+                  value={item.price === 0 ? "" : item.price}
                   onChange={(e) => {
                     const value = e.target.value;
-                    if (e.target.validity.valid || value === "") {
-                      handlePriceChange(item.id, value === "" ? 0 : Number(value));
-                    }
+                    handlePriceChange(item.id, value === "" ? 0 : Number(value));
                   }}
                   required
                   className="w-full text-right text-sm h-9"
@@ -149,6 +145,7 @@ const ProductTable = ({ items, handlePriceChange, handleQtyChange, handleRemoveI
                       handleQtyChange(item.id, Math.max(1, Number(item.qty) - 1));
                     }
                   }}
+                  onFocus={(e) => e.target.select()}
                   required
                   className="w-full text-right text-sm h-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
