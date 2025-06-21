@@ -34,6 +34,7 @@ const OrderForm = ({
   phoneSearchTerm,
   setPhoneSearchTerm,
   handleSelectCustomer,
+  resetForm,
 }) => {
   const router = useRouter();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -296,11 +297,10 @@ const OrderForm = ({
               <div class="section-title">Customer</div>
               <p>${invoiceData.customer_name || "N/A"}</p>
               <p>Phone: ${invoiceData.customer_phone_number || "N/A"}</p>
-              ${
-                invoiceData.mobile_banking_phone
-                  ? `<p>Mobile: ${invoiceData.mobile_banking_phone}</p>`
-                  : ""
-              }
+              ${invoiceData.mobile_banking_phone
+          ? `<p>Mobile: ${invoiceData.mobile_banking_phone}</p>`
+          : ""
+        }
               ${invoiceData.note ? `<p>Note: ${invoiceData.note}</p>` : ""}
             </div>
             <div class="divider"></div>
@@ -317,8 +317,8 @@ const OrderForm = ({
                 </thead>
                 <tbody>
                   ${invoiceData.items
-                    ?.map(
-                      (item) => `
+          ?.map(
+            (item) => `
                     <tr>
                       <td>${item.product_name || "N/A"}</td>
                       <td class="text-right">${item.quantity || "0"}</td>
@@ -326,8 +326,8 @@ const OrderForm = ({
                       <td class="text-right">৳ ${formatNumber(item.total_discounted_amount)}</td>
                     </tr>
                   `
-                    )
-                    .join("")}
+          )
+          .join("")}
                 </tbody>
               </table>
             </div>
@@ -396,70 +396,70 @@ const OrderForm = ({
   return (
     <div className="w-full flex-shrink-0">
       <div className="grid grid-cols-2 gap-4 items-center text-sm mb-4">
-  <span className="text-base font-semibold">Phone Number {is_POS && <span className="text-sm text-red-600">*</span>}</span>
-  <div className="relative w-full">
-    <Input
-      className={`border px-3 mt-5 py-2 bg-transparent focus:ring-0 ${phoneError ? "border-red-500" : ""}`}
-      placeholder="Enter number"
-      value={phoneSearchTerm}
-      onChange={(e) => {
-        const value = e.target.value || "";
-        setPhoneSearchTerm(value);
-        validatePhoneNumber(value);
-        setOpen(true);
-      }}
-      onBlur={() => {
-        if (!filteredCustomers.some((c) => c.phone_number === phoneSearchTerm)) {
-          if (validatePhoneNumber(phoneSearchTerm)) {
-            handleTransactionFieldChange("customer_phone_number", phoneSearchTerm);
-          }
-        }
-      }}
-    />
-    {phoneError && (
-      <p className="text-red-500 text-xs mt-1">{phoneError}</p>
-    )}
-    {phoneSearchTerm && open && filteredCustomers.length > 0 && (
-      <div className="absolute top-14 z-10 w-full rounded mt-2 max-h-40 overflow-y-auto dark:bg-gray-700 bg-gray-300">
-        {filteredCustomers.map((customer) => (
-          <div
-            key={customer.id}
-            className="p-2 dark:hover:bg-gray-300/30 hover:bg-gray-200 cursor-pointer"
-            onClick={() => {
-              handleSelectCustomer(customer);
-              setPhoneError("");
-              setOpen(false);
+        <span className="text-base font-semibold">Phone Number {is_POS && <span className="text-sm text-red-600">*</span>}</span>
+        <div className="relative w-full">
+          <Input
+            className={`border px-3 mt-5 py-2 bg-transparent focus:ring-0 ${phoneError ? "border-red-500" : ""}`}
+            placeholder="Enter number"
+            value={phoneSearchTerm}
+            onChange={(e) => {
+              const value = e.target.value || "";
+              setPhoneSearchTerm(value);
+              validatePhoneNumber(value);
+              setOpen(true);
             }}
-          >
-            {customer.phone_number} - {customer.name || `Customer #${customer.id}`}
-          </div>
-        ))}
+            onBlur={() => {
+              if (!filteredCustomers.some((c) => c.phone_number === phoneSearchTerm)) {
+                if (validatePhoneNumber(phoneSearchTerm)) {
+                  handleTransactionFieldChange("customer_phone_number", phoneSearchTerm);
+                }
+              }
+            }}
+          />
+          {phoneError && (
+            <p className="text-red-500 text-xs mt-1">{phoneError}</p>
+          )}
+          {phoneSearchTerm && open && filteredCustomers.length > 0 && (
+            <div className="absolute top-14 z-10 w-full rounded mt-2 max-h-40 overflow-y-auto dark:bg-gray-700 bg-gray-300">
+              {filteredCustomers.map((customer) => (
+                <div
+                  key={customer.id}
+                  className="p-2 dark:hover:bg-gray-300/30 hover:bg-gray-200 cursor-pointer"
+                  onClick={() => {
+                    handleSelectCustomer(customer);
+                    setPhoneError("");
+                    setOpen(false);
+                  }}
+                >
+                  {customer.phone_number} - {customer.name || `Customer #${customer.id}`}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    )}
-  </div>
-</div>
-<div className="grid grid-cols-2 gap-4 items-center text-sm mb-4">
-  <span className="text-base font-semibold">Name</span>
-  <Input
-    type="text"
-    className="w-full"
-    placeholder="Enter name"
-    value={transaction.name}
-    onChange={(e) => handleTransactionFieldChange("name", e.target.value)}
-  />
-</div>
-<div className="mb-4">
-  <div className="relative grid grid-cols-2 gap-4 items-center">
-    <span className="font-semibold dark:text-white text-gray-700">Note</span>
-    <Textarea
-      id="note"
-      placeholder="Add note about this order"
-      value={transaction.note}
-      onChange={(e) => handleTransactionFieldChange("note", e.target.value)}
-      className="min-h-[70px] w-full"
-    />
-  </div>
-</div>
+      <div className="grid grid-cols-2 gap-4 items-center text-sm mb-4">
+        <span className="text-base font-semibold">Name</span>
+        <Input
+          type="text"
+          className="w-full"
+          placeholder="Enter name"
+          value={transaction.name}
+          onChange={(e) => handleTransactionFieldChange("name", e.target.value)}
+        />
+      </div>
+      <div className="mb-4">
+        <div className="relative grid grid-cols-2 gap-4 items-center">
+          <span className="font-semibold dark:text-white text-gray-700">Note</span>
+          <Textarea
+            id="note"
+            placeholder="Add note about this order"
+            value={transaction.note}
+            onChange={(e) => handleTransactionFieldChange("note", e.target.value)}
+            className="min-h-[70px] w-full"
+          />
+        </div>
+      </div>
       <div className="border-b my-2" />
       <div className="grid grid-cols-2 gap-4 items-center text-sm pb-4">
         <span className="text-base font-semibold">Subtotal</span>
@@ -615,7 +615,16 @@ const OrderForm = ({
         )}
       </div>
       {showSuccessModal && (
-        <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <Dialog
+          open={showSuccessModal}
+          onOpenChange={(isOpen) => {
+            setShowSuccessModal(isOpen);
+            if (!isOpen) {
+              resetForm(); // Call resetForm when the modal is closed
+            }
+          }}
+        >
+
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Order Created Successfully</DialogTitle>
