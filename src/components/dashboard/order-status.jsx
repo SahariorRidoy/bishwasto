@@ -113,14 +113,14 @@ export default function OrderStatus() {
         <div className="p-6 bg-[#00ADB5] to-teal-50 dark:from-blue-900/20 dark:to-teal-900/20 rounded-xl">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="p-6 rounded-lg bg-white dark:bg-gray-800 shadow-md transition-transform hover:scale-105 flex-1">
-              <p className={`text-lg font-medium ${isDark ? "text-gray-400" : "text-gray-600"}`}>Completed Orders</p>
-              <p className={`text-3xl font-bold ${isDark ? "text-blue-400" : "text-blue-500"}`}>
+              <p className={`text-lg font-medium ${isDark ? "text-gray-400" : "text-gray-600"}`}>Completed Sales</p>
+              <p className={`text-2xl font-bold ${isDark ? "text-blue-400" : "text-blue-500"}`}>
                 {orderData.completed.toLocaleString()}
               </p>
             </div>
             <div className="p-6 rounded-lg bg-white dark:bg-gray-800 shadow-md transition-transform hover:scale-105 flex-1">
-              <p className={`text-lg font-medium ${isDark ? "text-gray-400" : "text-gray-600"}`}>Pending Orders</p>
-              <p className={`text-3xl font-bold ${isDark ? "text-yellow-400" : "text-yellow-500"}`}>
+              <p className={`text-lg font-medium ${isDark ? "text-gray-400" : "text-gray-600"}`}>Pending Sales</p>
+              <p className={`text-2xl font-bold ${isDark ? "text-yellow-400" : "text-yellow-500"}`}>
                 {orderData.pending.toLocaleString()}
               </p>
             </div>
