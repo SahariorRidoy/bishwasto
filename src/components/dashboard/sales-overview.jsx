@@ -195,21 +195,21 @@ export default function SalesOverview() {
         <div className="p-6 bg-[#00ADB5] dark:from-blue-900/20 dark:to-teal-900/20 rounded-xl">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="p-6 rounded-lg bg-white dark:bg-gray-800 shadow-md transition-transform hover:scale-105 flex-1">
-              <p className={`text- font-medium ${isDark ? "text-gray-400" : "text-gray-600"}`}>Revenue</p>
-              <p className={`text-3xl font-bold ${isDark ? "text-blue-400" : "text-blue-500"}`}>
-                BDT {salesData.revenue.toLocaleString()}
+              <p className={`text-sm font-medium ${isDark ? "text-gray-400" : "text-gray-600"}`}>Revenue</p>
+              <p className={`text-2xl font-bold ${isDark ? "text-blue-400" : "text-blue-500"}`}>
+                ৳ {salesData.revenue.toLocaleString()}
               </p>
             </div>
             <div className="p-6 rounded-lg bg-white dark:bg-gray-800 shadow-md transition-transform hover:scale-105 flex-1">
-              <p className={`text-lg font-medium ${isDark ? "text-gray-400" : "text-gray-600"}`}>Profit</p>
-              <p className={`text-3xl font-bold ${isDark ? "text-green-400" : "text-green-500"}`}>
-                BDT {salesData.profit.toLocaleString()}
+              <p className={`text-sm font-medium ${isDark ? "text-gray-400" : "text-gray-600"}`}>Profit</p>
+              <p className={`text-2xl font-bold ${isDark ? "text-green-400" : "text-green-500"}`}>
+                ৳ {salesData.profit.toLocaleString()}
               </p>
             </div>
             <div className="p-6 rounded-lg bg-white dark:bg-gray-800 shadow-md transition-transform hover:scale-105 flex-1">
-              <p className={`text-lg font-medium ${isDark ? "text-gray-400" : "text-gray-600"}`}>Total Dues</p>
-              <p className={`text-3xl font-bold ${isDark ? "text-red-400" : "text-red-500"}`}>
-                BDT {salesData.totalDues.toLocaleString()}
+              <p className={`text-sm font-medium ${isDark ? "text-gray-400" : "text-gray-600"}`}>Dues</p>
+              <p className={`text-2xl font-bold ${isDark ? "text-red-400" : "text-red-500"}`}>
+                ৳ {salesData.totalDues.toLocaleString()}
               </p>
             </div>
           </div>
