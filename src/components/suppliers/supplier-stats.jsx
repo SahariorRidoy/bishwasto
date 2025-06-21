@@ -12,8 +12,8 @@ export function SupplierStats() {
           <Building2 className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">12</div>
-          <p className="text-xs text-muted-foreground">+2 from last month</p>
+          <div className="text-2xl font-bold">0</div>
+          <p className="text-xs text-muted-foreground">+0 from last month</p>
         </CardContent>
       </Card>
       <Card>
@@ -24,8 +24,8 @@ export function SupplierStats() {
           <TruckIcon className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">24</div>
-          <p className="text-xs text-muted-foreground">+4 from last month</p>
+          <div className="text-2xl font-bold">0</div>
+          <p className="text-xs text-muted-foreground">+0 from last month</p>
         </CardContent>
       </Card>
       <Card>
@@ -34,8 +34,8 @@ export function SupplierStats() {
           <Package2 className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">48</div>
-          <p className="text-xs text-muted-foreground">+8 from last month</p>
+          <div className="text-2xl font-bold">0</div>
+          <p className="text-xs text-muted-foreground">+0 from last month</p>
         </CardContent>
       </Card>
     </div>
