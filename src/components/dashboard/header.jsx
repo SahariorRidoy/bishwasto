@@ -384,7 +384,7 @@ export default function Header({ isDark, toggleTheme, currentPath = "" }) {
           <QuickAccessButton
             icon={List}
             href="/order/order-lists"
-            label="Order Lists"
+            label="Sales Lists"
             active={currentPath === "/order/order-lists"}
             showLabel={true}
           />
