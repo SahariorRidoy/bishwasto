@@ -9,6 +9,152 @@ import { useSelector } from "react-redux";
 import axios from "axios";
 import Cookies from "js-cookie";
 
+const PaymentReceiptModal = ({ customer, paidItems, totalPayment, totalRemaining, shopId, onClose }) => {
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      try {
+        const accessToken = Cookies.get("accessToken");
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}invoice/list/${shopId}/?customer=${customer.customer_id}`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        setInvoices(response.data);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching invoices:", err);
+        setLoading(false);
+      }
+    };
+    fetchInvoices();
+  }, [customer.customer_id, shopId]);
+
+  const formatNumber = (value) => {
+    const num = Number(value);
+    return isNaN(num) ? "0.00" : num.toFixed(2);
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "Invalid date";
+    const date = new Date(dateString);
+    return date.toLocaleString();
+  };
+
+  const getPaymentStatus = (invoice) => {
+    const due = Number(invoice.due);
+    const grandTotal = Number(invoice.grand_total);
+    if (isNaN(due) || isNaN(grandTotal)) return "Unknown";
+    if (due <= 0) return "Paid";
+    if (due < grandTotal) return "Partial";
+    return "Unpaid";
+  };
+
+  const handlePrint = () => {
+    const printContent = `
+      <html>
+        <head>
+          <title>Payment Receipt - ${customer.customer_name}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            h1 { text-align: center; }
+            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            .total { font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <h1>Payment Receipt</h1>
+          <p><strong>Customer:</strong> ${customer.customer_name}</p>
+          <p><strong>Phone:</strong> ${customer.customer_phone_number}</p>
+          <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
+          <p><strong>Payment Amount:</strong> ৳ ${formatNumber(totalPayment)}</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Invoice ID</th>
+                <th>Payment Applied</th>
+                <th>Remaining Due</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${paidItems.map(item => `
+                <tr>
+                  <td>${item.id}</td>
+                  <td>৳ ${formatNumber(item.payment_applied)}</td>
+                  <td>৳ ${formatNumber(item.remaining_due)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <p class="total">Total Remaining Due: ৳ ${formatNumber(totalRemaining)}</p>
+        </body>
+      </html>
+    `;
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    document.body.appendChild(iframe);
+    const printDoc = iframe.contentWindow.document;
+    printDoc.open();
+    printDoc.write(printContent);
+    printDoc.close();
+    iframe.contentWindow.print();
+    setTimeout(() => document.body.removeChild(iframe), 1000);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-gray-100 border- dark:bg-black bg-opacity-10 flex items-center justify-center ">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold mb-4">Payment Receipt</h2>
+        <button
+          onClick={onClose}
+          className="mt-4 cursor-pointer bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+        >
+          Close
+        </button>
+        </div>
+        <p><strong>Customer:</strong> {customer.customer_name}</p>
+        <p><strong>Phone:</strong> {customer.customer_phone_number}</p>
+        <p><strong>Payment Amount:</strong> ৳ {formatNumber(totalPayment)}</p>
+        <table className="w-full mt-4 border-collapse">
+          <thead>
+            <tr className="bg-gray-100 dark:bg-gray-700">
+              <th className="border p-2">Invoice ID</th>
+              <th className="border p-2">Payment Applied</th>
+              <th className="border p-2">Remaining Due</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paidItems.map(item => (
+              <tr key={item.id} className="border-b">
+                <td className="border p-2">{item.id}</td>
+                <td className="border p-2">৳ {formatNumber(item.payment_applied)}</td>
+                <td className="border p-2">৳ {formatNumber(item.remaining_due)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="mt-4 font-bold">Total Remaining Due: ৳ {formatNumber(totalRemaining)}</p>
+        <button
+          onClick={handlePrint}
+          className="mt-4 bg-teal-500 cursor-pointer text-white px-4 py-2 rounded hover:bg-teal-600"
+        >
+          Print Receipt
+        </button>
+        {loading ? (
+          <p>Loading invoices...</p>
+        ) : (
+          ""
+        )}
+        
+      </div>
+    </div>
+  );
+};
+
 export default function DueListPage() {
   const [asc, setAsc] = useState(false);
   const [consolidatedDueList, setConsolidatedDueList] = useState([]);
@@ -18,6 +164,8 @@ export default function DueListPage() {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [isTablet, setIsTablet] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [paymentDetails, setPaymentDetails] = useState(null);
 
   const selectedShop = useSelector((state) => state.shop.selectedShop);
   const shopId = selectedShop?.id;
@@ -37,7 +185,6 @@ export default function DueListPage() {
           }
         );
         const dueList = response.data;
-        // Group by customer ID and calculate total due
         const grouped = dueList.reduce((acc, item) => {
           const key = item.customer;
           if (!acc[key]) {
@@ -123,14 +270,13 @@ export default function DueListPage() {
             throw new Error("Invalid payment amount");
           }
           const updatedDueItems = customer.due_items.map(item => {
-            if (paymentLeft <= 0) return item;
+            if (paymentLeft <= 0) return { ...item, payment_applied: 0 };
             const dueAmount = parseFloat(item.due_amount);
             const paymentToApply = Math.min(dueAmount, paymentLeft);
             const newDueAmount = dueAmount - paymentToApply;
             paymentLeft -= paymentToApply;
-            return { ...item, due_amount: newDueAmount.toString() };
+            return { ...item, due_amount: newDueAmount.toString(), payment_applied: paymentToApply };
           });
-          // Update each modified due item via API
           for (const item of updatedDueItems) {
             const originalItem = customer.due_items.find(i => i.id === item.id);
             if (item.due_amount !== originalItem.due_amount) {
@@ -141,14 +287,30 @@ export default function DueListPage() {
               );
             }
           }
-          // Update local state
+          const paidItems = updatedDueItems
+            .filter(item => item.payment_applied > 0)
+            .map(item => ({
+              id: item.id,
+              payment_applied: item.payment_applied,
+              remaining_due: item.due_amount,
+            }));
+          const updatedCustomer = {
+            ...customer,
+            total_due: customer.total_due - parseFloat(paymentAmount),
+            due_items: updatedDueItems,
+          };
           setConsolidatedDueList(prevList =>
             prevList.map(c =>
-              c.customer_id === editingId
-                ? { ...c, total_due: c.total_due - parseFloat(paymentAmount), due_items: updatedDueItems }
-                : c
+              c.customer_id === editingId ? updatedCustomer : c
             )
           );
+          setPaymentDetails({
+            customer: updatedCustomer,
+            paidItems,
+            totalPayment: paymentAmount,
+            totalRemaining: updatedCustomer.total_due,
+          });
+          setIsModalOpen(true);
           Swal.fire({
             title: "Updated!",
             text: "The due has been updated.",
@@ -173,6 +335,11 @@ export default function DueListPage() {
   const cancelEdit = () => {
     setEditingId(null);
     setPaymentAmount('');
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setPaymentDetails(null);
   };
 
   if (loading) {
@@ -450,6 +617,17 @@ export default function DueListPage() {
           </div>
         )}
       </div>
+
+      {isModalOpen && paymentDetails && (
+        <PaymentReceiptModal
+          customer={paymentDetails.customer}
+          paidItems={paymentDetails.paidItems}
+          totalPayment={paymentDetails.totalPayment}
+          totalRemaining={paymentDetails.totalRemaining}
+          shopId={shopId}
+          onClose={closeModal}
+        />
+      )}
     </div>
   );
 }
