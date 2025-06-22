@@ -1,39 +1,13 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import {
-  Users,
-  DollarSign,
-  Copy,
-  PlusCircle,
-  Check,
-} from "lucide-react";
+import { Users, DollarSign, Copy, PlusCircle, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import axios from "axios";
@@ -46,57 +20,54 @@ export default function Referrals() {
   const [myCampaigns, setMyCampaigns] = useState([]);
   const [payHistory, setPayHistory] = useState([]);
   const [referralList, setReferralList] = useState([]);
-  const [filteredReferralList, setFilteredReferralList] = useState([]); // For search
+  const [filteredReferralList, setFilteredReferralList] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch all data on mount
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
-        const [codeRes, listRes, tiersRes, campaignsRes, payoutsRes] =
-          await Promise.all([
-            axios.get(`${process.env.NEXT_PUBLIC_API_URL}referrals/code`, {
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${Cookies.get("accessToken")}`,
-              },
-            }),
-            axios.get(`${process.env.NEXT_PUBLIC_API_URL}referrals/list`, {
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${Cookies.get("accessToken")}`,
-              },
-            }),
-            axios.get(`${process.env.NEXT_PUBLIC_API_URL}referrals/bonus-tiers/`, {
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${Cookies.get("accessToken")}`,
-              },
-            }),
-            axios.get(`${process.env.NEXT_PUBLIC_API_URL}referrals/campaigns/`, {
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${Cookies.get("accessToken")}`,
-              },
-            }),
-            axios.get(`${process.env.NEXT_PUBLIC_API_URL}referrals/payouts/`, {
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${Cookies.get("accessToken")}`,
-              },
-            }),
-          ]);
+        const api = axios.create({
+          baseURL: process.env.NEXT_PUBLIC_API_URL,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${Cookies.get("accessToken") || ""}`,
+          },
+        });
 
-        setReferralCode(codeRes.data.code);
-        const referrals = listRes.data;
-        setReferralList(referrals);
-        setFilteredReferralList(referrals); // Initialize filtered list
-        setBonusTiers(tiersRes.data);
-        setMyCampaigns(campaignsRes.data);
-        setPayHistory(payoutsRes.data);
+        const endpoints = [
+          "referrals/code/",
+          "referrals/list/",
+          "referrals/bonus-tiers/",
+          "referrals/campaigns/",
+          "referrals/payouts/",
+        ];
+
+        const results = await Promise.all(
+          endpoints.map(async (endpoint) => {
+            try {
+              const response = await api.get(endpoint);
+              return { data: response.data, endpoint };
+            } catch (error) {
+              toast.error(`Failed to load data from ${endpoint}`);
+              return { error, endpoint };
+            }
+          })
+        );
+
+        const [codeRes, listRes, tiersRes, campaignsRes, payoutsRes] = results;
+
+        if (!codeRes.error) setReferralCode(codeRes.data.code);
+        if (!listRes.error) {
+          const referrals = listRes.data;
+          setReferralList(referrals);
+          setFilteredReferralList(referrals);
+        }
+        if (!tiersRes.error) setBonusTiers(tiersRes.data);
+        if (!campaignsRes.error) setMyCampaigns(campaignsRes.data);
+        if (!payoutsRes.error) setPayHistory(payoutsRes.data);
       } catch (error) {
-        console.error("Error fetching referral data:", error);
-        toast.error("Failed to load referral data.");
+        toast.error("An unexpected error occurred while loading data.");
       } finally {
         setLoading(false);
       }
@@ -120,7 +91,6 @@ export default function Referrals() {
     toast.success("Referral code copied to clipboard");
   };
 
-  // Handle search
   const handleSearch = (e) => {
     const searchTerm = e.target.value.toLowerCase();
     const filtered = referralList.filter((referral) =>
@@ -130,7 +100,7 @@ export default function Referrals() {
   };
 
   return (
-    <div>
+    <div className="container mx-auto p-4">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight">Referral Program</h1>
         <p className="text-muted-foreground">
@@ -226,9 +196,8 @@ export default function Referrals() {
                             }
                           );
                           toast.success("Campaign started!");
-                          // Optionally refetch campaigns
+                          // Refetch campaigns if needed
                         } catch (error) {
-                          console.error("Error starting campaign:", error);
                           toast.error("Failed to start campaign.");
                         }
                       }}
@@ -278,13 +247,11 @@ export default function Referrals() {
         <TabsContent value="referrals" className="space-y-4 mt-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold tracking-tight">Your Referrals</h2>
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="Search by phone..."
-                className="w-[250px]"
-                onChange={handleSearch}
-              />
-            </div>
+            <Input
+              placeholder="Search by phone..."
+              className="w-[250px]"
+              onChange={handleSearch}
+            />
           </div>
           {loading ? (
             <p className="text-center text-sm text-muted-foreground pt-36">Loading referrals...</p>
@@ -333,15 +300,11 @@ export default function Referrals() {
 
         {/* Bonus Tiers Tab */}
         <TabsContent value="bonus-tiers" className="space-y-4 mt-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold tracking-tight">Bonus Tiers</h2>
-          </div>
+          <h2 className="text-xl font-semibold tracking-tight">Bonus Tiers</h2>
           {loading ? (
             <p className="text-center text-sm text-muted-foreground pt-36">Loading bonus tiers...</p>
           ) : bonusTiers.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground pt-36">
-              No bonus tiers available. Check back later!
-            </p>
+            <p className="text-center text-sm text-muted-foreground pt-36">No bonus tiers available.</p>
           ) : (
             <Card>
               <CardContent className="p-6">
@@ -411,9 +374,8 @@ export default function Referrals() {
                         }
                       );
                       toast.success("Payout requested successfully!");
-                      // Optionally refetch payHistory
+                      // Refetch payHistory if needed
                     } catch (error) {
-                      console.error("Error submitting payout request:", error);
                       toast.error("Failed to request payout.");
                     }
                   }}
@@ -484,7 +446,7 @@ export default function Referrals() {
                   <TableBody>
                     {payHistory.map((payout) => (
                       <TableRow key={payout.id}>
-                        <TableCell>{payout.date}</TableCell>
+                        <TableCell>{new Date(payout.date).toLocaleDateString()}</TableCell>
                         <TableCell className="font-medium">{payout.amount} credits</TableCell>
                         <TableCell>{payout.method}</TableCell>
                         <TableCell>
