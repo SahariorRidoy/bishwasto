@@ -263,9 +263,9 @@ const Page = ({ params }) => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="max-w-full mx-auto px-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-4">
         <Button
           variant="outline"
           className="flex cursor-pointer items-center gap-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -328,9 +328,49 @@ const Page = ({ params }) => {
               </span>
             </div>
           </div>
-
+ {/* Items Table */}
+          <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">Order Items</h2>
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-600">
+            <table className="w-full text-sm text-gray-800 dark:text-gray-200">
+              <thead className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                <tr>
+                  <th className="px-6 py-4 text-left font-semibold">Item</th>
+                  <th className="px-6 py-4 text-right font-semibold">Unit Price</th>
+                  <th className="px-6 py-4 text-right font-semibold">Quantity</th>
+                  <th className="px-6 py-4 text-right font-semibold">Discount</th>
+                  <th className="px-6 py-4 text-right font-semibold">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
+                {singleInvoice?.items.map((item, index) => (
+                  <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="px-6 py-4">
+                      <div className="font-medium">{item.product_name || "N/A"}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Stock: {item.product_stock || "N/A"}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">৳ {formatNumber(item.sell_price_per_quantity)}</td>
+                    <td className="px-6 py-4 text-right">{item.quantity || "0"}</td>
+                    <td className="px-6 py-4 text-right">
+                      <div>৳ {formatNumber(item.discount_total)}</div>
+                    </td>
+                    <td className="px-6 py-4 text-right font-medium">
+                      ৳ {formatNumber(item.total_discounted_amount)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="bg-gray-100 dark:bg-gray-700 font-semibold">
+                <tr>
+                  <td colSpan={4} className="px-6 py-4 text-right">Total</td>
+                  <td className="px-6 py-4 text-right">৳ {formatNumber(singleInvoice?.grand_total)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
           {/* Customer and Payment Info */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-10">
             <Card className="p-6 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600">
               <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">Customer Details</h2>
               {singleInvoice?.customer_name && (
@@ -379,47 +419,7 @@ const Page = ({ params }) => {
             </Card>
           </div>
 
-          {/* Items Table */}
-          <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">Order Items</h2>
-          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-600">
-            <table className="w-full text-sm text-gray-800 dark:text-gray-200">
-              <thead className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                <tr>
-                  <th className="px-6 py-4 text-left font-semibold">Item</th>
-                  <th className="px-6 py-4 text-right font-semibold">Unit Price</th>
-                  <th className="px-6 py-4 text-right font-semibold">Quantity</th>
-                  <th className="px-6 py-4 text-right font-semibold">Discount</th>
-                  <th className="px-6 py-4 text-right font-semibold">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
-                {singleInvoice?.items.map((item, index) => (
-                  <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-6 py-4">
-                      <div className="font-medium">{item.product_name || "N/A"}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        Stock: {item.product_stock || "N/A"}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">৳ {formatNumber(item.sell_price_per_quantity)}</td>
-                    <td className="px-6 py-4 text-right">{item.quantity || "0"}</td>
-                    <td className="px-6 py-4 text-right">
-                      <div>৳ {formatNumber(item.discount_total)}</div>
-                    </td>
-                    <td className="px-6 py-4 text-right font-medium">
-                      ৳ {formatNumber(item.total_discounted_amount)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot className="bg-gray-100 dark:bg-gray-700 font-semibold">
-                <tr>
-                  <td colSpan={4} className="px-6 py-4 text-right">Total</td>
-                  <td className="px-6 py-4 text-right">৳ {formatNumber(singleInvoice?.grand_total)}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+         
         </div>
       </Card>
     </div>
